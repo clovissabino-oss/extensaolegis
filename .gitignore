@@ -27,3 +27,6 @@ Thumbs.db
 
 # Testes
 coverage/
+test-results/
+playwright-report/
+.last-run.json

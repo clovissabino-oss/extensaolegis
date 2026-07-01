@@ -32,11 +32,32 @@ describe('resolverNorma', () => {
     expect(r.candidatos).toHaveLength(0);
   });
 
-  it('marca ambigua quando o mesmo número aparece em anos diferentes pedidos por ano ausente', async () => {
+  it('filtra por ano e confirma quando dois URNs com o mesmo número diferem apenas no ano', async () => {
     const html = `<a href="/urn/urn:lex:br:federal:lei:1990-12-11;8112">A</a>
                   <a href="/urn/urn:lex:br:federal:lei:1991-01-10;8112">B</a>`;
     const r = await resolverNorma({ tipo: 'Lei', numero: '8112', ano: 1990, linha: 4 }, fetchMock(html));
     // ano 1990 filtra para 1 -> confirmada
     expect(r.status).toBe('confirmada');
+  });
+
+  it('marca ambigua quando dois URNs distintos compartilham segmento, número e ano', async () => {
+    const html = `<a href="/urn/urn:lex:br:federal:lei:1990-12-11;8112">A</a>
+                  <a href="/urn/urn:lex:br:federal:lei:1990-06-01;8112">B</a>`;
+    const r = await resolverNorma({ tipo: 'Lei', numero: '8112', ano: 1990, linha: 5 }, fetchMock(html));
+    expect(r.status).toBe('ambigua');
+    expect(r.candidatos).toHaveLength(2);
+  });
+
+  it('retorna nao_localizada com motivo HTTP quando a resposta é 404', async () => {
+    const fetch404 = vi.fn(async () => new Response('', { status: 404 }));
+    const r = await resolverNorma({ tipo: 'Lei', numero: '8112', ano: 1990, linha: 6 }, fetch404);
+    expect(r.status).toBe('nao_localizada');
+    expect(r.motivo).toMatch(/404/);
+  });
+
+  it('retorna nao_localizada e não lança quando fetchFn rejeita com erro de rede', async () => {
+    const fetchErro = vi.fn(async () => { throw new Error('rede'); });
+    const r = await resolverNorma({ tipo: 'Lei', numero: '8112', ano: 1990, linha: 7 }, fetchErro);
+    expect(r.status).toBe('nao_localizada');
   });
 });

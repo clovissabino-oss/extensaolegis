@@ -3,6 +3,7 @@ import type { LeiAcompanhada, FotoTexto, Inovacao } from '../types';
 import { normalizarTexto } from '../planalto/normalizarTexto';
 import { extrairMarcadores, marcadoresNovos } from '../planalto/marcadores';
 import { hashTexto, resumirDiff } from '../planalto/diff';
+import { buscarTextoCompilado } from '../planalto/buscarTexto';
 
 export interface ResultadoVerificacao {
   inovacoes: Inovacao[];
@@ -11,21 +12,6 @@ export interface ResultadoVerificacao {
 }
 
 interface Deps { fetchFn?: typeof fetch; agora: string; gerarId: () => string }
-
-async function fetchHtml(url: string, fetchFn: typeof fetch): Promise<string> {
-  const resp = await fetchFn(url);
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  // Use arrayBuffer + ISO-8859-1 for real Planalto pages; falls back gracefully
-  // because TextDecoder('iso-8859-1') on UTF-8 bytes round-trips through DOMParser.
-  const buffer = await resp.arrayBuffer();
-  // Detect encoding: if valid UTF-8 use it, otherwise fall back to ISO-8859-1
-  try {
-    const utf8 = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
-    return utf8;
-  } catch {
-    return new TextDecoder('iso-8859-1').decode(buffer);
-  }
-}
 
 export async function verificarLei(
   lei: LeiAcompanhada,
@@ -36,7 +22,7 @@ export async function verificarLei(
 
   let textoNorm: string;
   try {
-    const html = await fetchHtml(lei.urlPlanalto, deps.fetchFn ?? fetch);
+    const html = await buscarTextoCompilado(lei.urlPlanalto, deps.fetchFn ?? fetch);
     textoNorm = normalizarTexto(html);
   } catch {
     return { inovacoes: [], novaFoto: null, statusVerif: 'falhou' };

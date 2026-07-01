@@ -1,0 +1,9 @@
+# Binários — nunca converter fim de linha
+*.pdf binary
+*.png binary
+*.xlsx binary
+*.xls binary
+*.zip binary
+
+# Pasta compilada da extensão — preservar bytes exatamente como gerados
+extensao/** -text

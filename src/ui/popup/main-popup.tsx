@@ -1,2 +1,3 @@
 import { render } from 'preact';
-render(<div>Legis Monitor</div>, document.getElementById('app')!);
+import { Popup } from './Popup';
+render(<Popup />, document.getElementById('app')!);

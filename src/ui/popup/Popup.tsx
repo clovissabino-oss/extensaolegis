@@ -40,6 +40,7 @@ export function Popup() {
   return (
     <div style="width:360px;padding:12px;font-family:sans-serif">
       <h3>Legis Monitor</h3>
+      <button onClick={() => chrome.tabs.create({ url: 'panel.html' })} style="margin-bottom:8px">Abrir Painel</button>
       <input type="file" accept=".xlsx,.xls,.csv" onChange={aoSelecionar} />
       <p style="font-size:12px">{msg}</p>
       {resultados.length > 0 && (

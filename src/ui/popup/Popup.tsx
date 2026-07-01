@@ -41,6 +41,7 @@ export function Popup() {
     <div style="width:360px;padding:12px;font-family:sans-serif">
       <h3>Legis Monitor</h3>
       <button onClick={() => chrome.tabs.create({ url: 'panel.html' })} style="margin-bottom:8px">Abrir Painel</button>
+      <a href={chrome.runtime.getURL('modelo-legislacoes.xlsx')} download style="display:block;margin-bottom:8px;font-size:12px">Baixar planilha-modelo</a>
       <input type="file" accept=".xlsx,.xls,.csv" onChange={aoSelecionar} />
       <p style="font-size:12px">{msg}</p>
       {resultados.length > 0 && (

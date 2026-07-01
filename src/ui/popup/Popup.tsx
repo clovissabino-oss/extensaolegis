@@ -49,9 +49,9 @@ export function Popup() {
               <li key={r.norma.linha}>
                 {r.norma.tipo} {r.norma.numero}/{r.norma.ano} — <b>{r.status}</b>
                 {r.status === 'ambigua' && (
-                  <select onChange={(e) => setEscolhas({ ...escolhas, [r.norma.linha]: (e.target as HTMLSelectElement).value })}>
+                  <select onChange={(e) => setEscolhas((prev) => ({ ...prev, [r.norma.linha]: (e.target as HTMLSelectElement).value }))}>
                     <option value="">escolher…</option>
-                    {r.candidatos.map((c) => <option value={c.urn}>{c.urn}</option>)}
+                    {r.candidatos.map((c) => <option key={c.urn} value={c.urn}>{c.urn}</option>)}
                   </select>
                 )}
               </li>

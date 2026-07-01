@@ -11,7 +11,7 @@ export async function resolverLote(
   for (let i = 0; i < normas.length; i++) {
     out.push(await resolverNorma(normas[i], deps.fetchFn ?? fetch));
     deps.onProgresso?.(i + 1, normas.length);
-    if (deps.intervaloMs) await new Promise((r) => setTimeout(r, deps.intervaloMs));
+    if (deps.intervaloMs && i < normas.length - 1) await new Promise((r) => setTimeout(r, deps.intervaloMs));
   }
   return out;
 }

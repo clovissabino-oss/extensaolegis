@@ -158,8 +158,8 @@ Recomputa diff só quando o hash muda.
 ```
 
 ### Configurações (`chrome.storage.local`)
-Frequência da verificação (padrão diária), pop-up on/off, formato de export preferido,
-mapeamento de colunas memorizado.
+Frequência da verificação (**configurável já no MVP**, padrão diária), pop-up on/off,
+formato de export preferido, mapeamento de colunas memorizado.
 
 **Notas:**
 - A **URN do LexML** é a chave única; resolve variações de escrita da mesma lei na
@@ -213,7 +213,7 @@ planilha-exemplo fica disponível para download dentro da extensão.
 
 - **Manifest V3** (service worker).
 - **TypeScript** (segurança de tipos sobre XML/HTML externos).
-- **UI:** Preact + Vite (bundle pequeno) — a confirmar; alternativa JS puro.
+- **UI:** Preact + Vite (bundle pequeno) — **decidido**.
 - **Planilha:** SheetJS (xlsx) para leitura e geração.
 - **PDF:** jsPDF.
 - **XML LexML:** `DOMParser` nativo.

@@ -7,13 +7,22 @@
 
 Extensão de navegador (Chrome/Edge) que monitora a legislação federal brasileira e
 avisa o usuário sempre que uma lei acompanhada sofre uma **inovação**. A partir de uma
-**planilha de leis** importada pelo usuário, a extensão resolve cada norma, confirma o
-conjunto a monitorar e passa a verificar periodicamente duas fontes independentes:
+**planilha de leis** importada pelo usuário, a extensão resolve cada norma (via LexML) e
+passa a monitorar o **texto compilado do Planalto**, do qual extrai dois tipos de
+inovação:
 
-1. **LexML Brasil** (API SRU/XML) — para detectar **normas novas que alteram** a lei
-   acompanhada (relação "alterado por").
-2. **Texto compilado do Planalto** (HTML) — para detectar **mudança no texto
-   consolidado** da lei (diff de redação).
+1. **Normas alteradoras** — a partir dos **marcadores inline** do texto compilado
+   (`(Redação dada pela Lei nº…)`, `(Incluído pela…)`, `(Revogado pela…)`), que são a
+   fonte **autoritativa e estática** de quais normas alteraram a lei.
+2. **Mudança de redação** — via **diff** do texto consolidado normalizado entre
+   verificações.
+
+> **Nota de validação técnica (2026-07-01):** o endpoint SRU histórico do LexML
+> (`/busca/SRU`) foi **desativado** (HTTP 404) e a seção de "relações" da ficha do LexML
+> é renderizada por JS/inconsistente — portanto **não** é usada para detectar alterações.
+> O LexML é usado apenas para **resolução** (tipo/número/ano → URN canônica) via
+> `GET https://www.lexml.gov.br/busca/search?keyword=...` (HTML UTF-8). A detecção de
+> inovações vem inteiramente do texto compilado do Planalto (autoritativo).
 
 As inovações detectadas geram **notificação nativa do navegador** + histórico em um
 **painel**, com **exportação de relatório** em Excel e PDF.
@@ -25,14 +34,15 @@ Decisões tomadas no brainstorming:
 - **Plataforma:** extensão de navegador (Manifest V3). Verificação ocorre com o
   navegador aberto (via `chrome.alarms`); alerta 24/7 com navegador fechado fica como
   evolução futura (exigiria backend — fora de escopo).
-- **O que é "inovação":** **ambos** — normas alteradoras (LexML) **e** mudança no texto
-  compilado (Planalto).
+- **O que é "inovação":** **ambos** — normas alteradoras **e** mudança de redação, ambas
+  extraídas do **texto compilado do Planalto** (marcadores inline + diff). LexML só
+  resolve a norma.
 - **Cadastro:** **importação em massa por planilha** (`.xlsx`/`.xls`/`.csv`), com tela de
   **confirmação** antes de monitorar.
 - **Saída:** **notificação do navegador + painel + exportação** (Excel/PDF).
 - **Arquitetura:** **100% client-side** (Abordagem A) — sem servidor, sem custo, dados
-  ficam locais. LexML como fonte oficial/espinha dorsal; parsing próprio do Planalto,
-  com projetos comunitários (api-legislacao, LegisCrawler) como referência/fallback
+  ficam locais. LexML para resolução; texto compilado do Planalto como fonte de
+  inovações; projetos comunitários (api-legislacao, LegisCrawler) como referência/fallback
   futuro.
 - **Fora de escopo (por ora):** backend/nuvem, notificação por e-mail, tramitação de
   projetos de lei antes de virarem norma, legislação estadual/municipal.
@@ -53,12 +63,12 @@ EXTENSÃO (Chrome/Edge — Manifest V3)
          |
          v
   Núcleo (lógica)
-   - importador de planilha        - resolvedor de normas (LexML)
-   - monitor LexML (alterações)    - monitor de texto compilado (Planalto) + diff
+   - importador de planilha        - resolvedor de normas (LexML /busca/search)
+   - detector de marcadores        - monitor de texto compilado (Planalto) + diff
    - exportador (xlsx/pdf)         - repositório (IndexedDB)
          |                                  |
          v                                  v
-   API LexML (SRU/XML)              Planalto (HTML do texto compilado)
+   LexML /busca/search (HTML)       Planalto (HTML compilado, ISO-8859-1)
 ```
 
 **Responsabilidades:**
@@ -67,11 +77,13 @@ EXTENSÃO (Chrome/Edge — Manifest V3)
   histórico por lei; botões de exportação; configurações (frequência, pop-up on/off).
 - **Service worker:** agenda a verificação (padrão 1x/dia) e emite notificações.
 - **Importador de planilha:** lê Excel/CSV no navegador (SheetJS); extrai tipo/número/ano.
-- **Resolvedor de normas (LexML):** resolve cada linha para a norma canônica (URN +
-  URL do Planalto); alimenta a tela de confirmação.
-- **Monitor LexML:** consulta relações "alterado por" e detecta normas alteradoras novas.
-- **Monitor de texto compilado (Planalto):** baixa o HTML, normaliza e compara com a
-  última "foto" salva (diff).
+- **Resolvedor de normas (LexML):** consulta `/busca/search` e extrai a URN canônica do
+  primeiro resultado federal correspondente; alimenta a tela de confirmação.
+- **Detector de marcadores:** extrai do texto compilado o conjunto de marcadores de
+  alteração (`(Redação dada pela…)`, `(Incluído pela…)`, `(Revogado pela…)`) e detecta
+  marcadores novos entre verificações (normas alteradoras).
+- **Monitor de texto compilado (Planalto):** baixa o HTML (decodifica ISO-8859-1),
+  normaliza e compara o hash com a última "foto" salva (diff).
 - **Exportador:** gera relatório em Excel e PDF.
 - **Repositório (IndexedDB):** persiste leis, fotos de texto e histórico de inovações.
 
@@ -97,18 +109,22 @@ Nada entra no monitoramento sem confirmação do usuário.
 
 ```
 chrome.alarms dispara (ex.: 1x/dia)
-  -> para cada lei acompanhada:
-       [monitor LexML]     consulta "alterado por"; norma nova -> inovação (ALTERACAO)
-       [monitor Planalto]  baixa texto, normaliza, compara hash/diff;
-                           texto mudou -> inovação (TEXTO) + nova foto
+  -> para cada lei acompanhada (que tem urlPlanalto):
+       baixa o texto compilado (decodifica ISO-8859-1), normaliza
+       [detecção A] extrai o conjunto de marcadores de alteração;
+                    marcador novo (não visto antes) -> inovação (ALTERACAO)
+       [detecção B] compara hash do texto normalizado com a última foto;
+                    hash mudou -> inovação (TEXTO) + guarda nova foto
   -> houve inovação nova?
        sim -> grava histórico -> chrome.notifications + badge (contador)
        não -> silencioso
   -> painel mostra inovações "novas"; usuário pode exportar
 ```
 
-Fontes **independentes**: falha em uma não impede a outra. Cada inovação registra sua
-origem (LexML vs Planalto).
+Uma única requisição ao Planalto por lei alimenta as duas detecções. Cada inovação
+registra sua origem (marcador de alteração vs diff de texto). Leis sem `urlPlanalto`
+(não resolvidas para um texto compilado) ficam sinalizadas e não entram na verificação
+até o usuário informar a URL.
 
 ## 5. Modelo de dados (IndexedDB, local)
 
@@ -145,12 +161,12 @@ Recomputa diff só quando o hash muda.
 {
   id:          "inv_000123",
   leiId:       "urn:lex:...;8112",
-  tipo:        "ALTERACAO" | "TEXTO",   // origem: LexML ou diff do Planalto
+  tipo:        "ALTERACAO" | "TEXTO",   // origem: marcador inline ou diff do Planalto
   detectadaEm: "2026-07-01T12:00:00Z",
   lida:        false,                    // controla "novo" e badge
 
-  // tipo = ALTERACAO:
-  normaAlteradora: { descricao, urn, urlLexml },
+  // tipo = ALTERACAO (marcador inline do texto compilado):
+  normaAlteradora: { descricao, tipoMarcador },  // ex.: "Lei nº 14.xyz, de 2026" / "REDACAO"
 
   // tipo = TEXTO:
   resumoDiff: { trechosAdicionados, trechosRemovidos, preview }
@@ -212,11 +228,13 @@ planilha-exemplo fica disponível para download dentro da extensão.
 ## 8. Stack técnica
 
 - **Manifest V3** (service worker).
-- **TypeScript** (segurança de tipos sobre XML/HTML externos).
+- **TypeScript** (segurança de tipos sobre o HTML externo do LexML e do Planalto).
 - **UI:** Preact + Vite (bundle pequeno) — **decidido**.
 - **Planilha:** SheetJS (xlsx) para leitura e geração.
 - **PDF:** jsPDF.
-- **XML LexML:** `DOMParser` nativo.
+- **Parsing de HTML:** `DOMParser` nativo (resultados do LexML e texto do Planalto).
+- **Decodificação ISO-8859-1:** `TextDecoder('iso-8859-1')` sobre o `ArrayBuffer` do
+  Planalto (o texto compilado **não** é UTF-8).
 - **Armazenamento:** IndexedDB via camada fina (`idb`).
 - **Diff:** biblioteca pequena (`diff`) para "antes/depois".
 
@@ -224,13 +242,15 @@ planilha-exemplo fica disponível para download dentro da extensão.
 
 - **Unitários** (núcleo):
   - importador: colunas fora de ordem, número com/sem ponto, linhas incompletas.
-  - resolvedor LexML: resposta única, múltiplos candidatos, zero resultados (fixtures XML).
+  - resolvedor LexML: extrai URN do primeiro resultado federal; múltiplos candidatos;
+    zero resultados (fixtures HTML do `/busca/search`).
+  - detector de marcadores: extrai o conjunto de marcadores; marcador novo detectado,
+    repetido não duplica (fixtures HTML do Planalto).
   - normalizador + diff: mudança trivial não gera inovação; mudança real gera.
-  - monitor: norma alteradora nova detectada; repetida não duplica.
 - **Integração:** importar → confirmar → salvar; verificar → registrar → marcar não-lida.
 - **E2E (fluxo crítico):** carregar extensão, importar planilha-exemplo, confirmar,
   simular verificação, ver notificação + item no painel (Playwright com extensão).
-- **Fontes externas sempre mockadas** (fixtures de LexML e Planalto).
+- **Fontes externas sempre mockadas** (fixtures HTML de LexML e Planalto).
 
 ## 10. Fontes de referência (pesquisa)
 

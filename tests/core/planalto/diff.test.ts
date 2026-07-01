@@ -17,4 +17,14 @@ describe('resumirDiff', () => {
     expect(r.trechosRemovidos).toBe(0);
     expect(r.preview).toContain('linha3');
   });
+  it('conta 1 adição ao inserir a primeira linha de um documento vazio', () => {
+    const r = resumirDiff('', 'novaLinha');
+    expect(r.trechosAdicionados).toBe(1);
+    expect(r.trechosRemovidos).toBe(0);
+  });
+  it('conta 1 adição e 1 remoção numa substituição pura de linha', () => {
+    const r = resumirDiff('linhaAntiga', 'linhaNova');
+    expect(r.trechosAdicionados).toBe(1);
+    expect(r.trechosRemovidos).toBe(1);
+  });
 });

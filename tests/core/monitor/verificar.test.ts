@@ -48,4 +48,16 @@ describe('verificarLei', () => {
     expect(r.statusVerif).toBe('falhou');
     expect(r.inovacoes).toHaveLength(0);
   });
+
+  it('guarda anti-falso-positivo: texto minúsculo com foto anterior grande retorna falhou sem inovação', async () => {
+    const fotoGrande = {
+      leiId: 'urn:1', capturadaEm: '2026-07-01T00:00:00Z',
+      hash: 'antigo', textoNorm: 'x'.repeat(5000), marcadores: [], tamanho: 5000,
+    };
+    // resposta minúscula -> normalizarTexto produz < 200 chars
+    const r = await verificarLei(lei, fotoGrande, deps('<p>ok</p>'));
+    expect(r.statusVerif).toBe('falhou');
+    expect(r.inovacoes).toHaveLength(0);
+    expect(r.novaFoto).toBeNull();
+  });
 });

@@ -10,5 +10,5 @@ export default defineManifest({
   options_page: 'options.html',
   permissions: ['alarms', 'notifications', 'storage'],
   host_permissions: ['https://www.lexml.gov.br/*', 'https://www.planalto.gov.br/*'],
-  web_accessible_resources: [{ resources: ['panel.html'], matches: ['<all_urls>'] }],
+  web_accessible_resources: [{ resources: ['panel.html'], matches: ['chrome-extension://*/*'] }],
 });

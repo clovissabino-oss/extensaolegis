@@ -48,16 +48,16 @@ describe('resolverNorma', () => {
     expect(r.candidatos).toHaveLength(2);
   });
 
-  it('retorna nao_localizada com motivo HTTP quando a resposta é 404', async () => {
-    const fetch404 = vi.fn(async () => new Response('', { status: 404 }));
-    const r = await resolverNorma({ tipo: 'Lei', numero: '8112', ano: 1990, linha: 6 }, fetch404);
-    expect(r.status).toBe('nao_localizada');
-    expect(r.motivo).toMatch(/404/);
+  it('retorna falha com motivo HTTP quando o servidor responde erro (ex.: 503)', async () => {
+    const fetch503 = vi.fn(async () => new Response('', { status: 503 }));
+    const r = await resolverNorma({ tipo: 'Lei', numero: '8112', ano: 1990, linha: 6 }, fetch503);
+    expect(r.status).toBe('falha');
+    expect(r.motivo).toMatch(/503/);
   });
 
-  it('retorna nao_localizada e não lança quando fetchFn rejeita com erro de rede', async () => {
+  it('retorna falha e não lança quando fetchFn rejeita com erro de rede', async () => {
     const fetchErro = vi.fn(async () => { throw new Error('rede'); });
     const r = await resolverNorma({ tipo: 'Lei', numero: '8112', ano: 1990, linha: 7 }, fetchErro);
-    expect(r.status).toBe('nao_localizada');
+    expect(r.status).toBe('falha');
   });
 });

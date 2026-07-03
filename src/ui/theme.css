@@ -286,6 +286,7 @@ body {
 .carimbo-confirmada { color: var(--carimbo-ok); }
 .carimbo-ambigua { color: var(--carimbo-alerta); }
 .carimbo-nao_localizada { color: var(--carimbo-erro); }
+.carimbo-falha { color: var(--tinta-fraca); border-style: dashed; }
 
 /* ---------- painel ---------- */
 

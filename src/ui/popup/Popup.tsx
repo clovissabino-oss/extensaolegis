@@ -11,7 +11,18 @@ const ROTULO_STATUS: Record<StatusResolucao, string> = {
   confirmada: 'Confirmada',
   ambigua: 'Ambígua',
   nao_localizada: 'Não localizada',
+  falha: 'Falha na consulta',
 };
+
+function resumo(res: ResultadoResolucao[], errosPlanilha: number): string {
+  const conta = (s: StatusResolucao) => res.filter((r) => r.status === s).length;
+  const partes = [`${conta('confirmada')} confirmada(s)`];
+  if (conta('ambigua')) partes.push(`${conta('ambigua')} ambígua(s)`);
+  if (conta('nao_localizada')) partes.push(`${conta('nao_localizada')} não localizada(s)`);
+  if (conta('falha')) partes.push(`${conta('falha')} falha(s) de consulta ao LexML`);
+  if (errosPlanilha) partes.push(`${errosPlanilha} erro(s) de planilha`);
+  return partes.join(', ') + '.';
+}
 
 export function Popup() {
   const [resultados, setResultados] = useState<ResultadoResolucao[]>([]);
@@ -32,7 +43,17 @@ export function Popup() {
     setMsg(`Resolvendo ${normas.length} norma(s)…`);
     const res = await resolverLote(normas, { intervaloMs: 300, onProgresso: (i, t) => setMsg(`Resolvendo ${i}/${t}…`) });
     setResultados(res);
-    setMsg(`${res.filter((r) => r.status === 'confirmada').length} confirmada(s), ${erros.length} erro(s) de planilha.`);
+    setMsg(resumo(res, erros.length));
+  }
+
+  async function reconsultarFalhas() {
+    const pendentes = resultados.filter((r) => r.status === 'falha').map((r) => r.norma);
+    setMsg(`Reconsultando ${pendentes.length} norma(s)…`);
+    const novos = await resolverLote(pendentes, { intervaloMs: 500, onProgresso: (i, t) => setMsg(`Reconsultando ${i}/${t}…`) });
+    const porLinha = new Map(novos.map((n) => [n.norma.linha, n]));
+    const mesclados = resultados.map((r) => porLinha.get(r.norma.linha) ?? r);
+    setResultados(mesclados);
+    setMsg(resumo(mesclados, 0));
   }
 
   async function confirmar() {
@@ -83,7 +104,7 @@ export function Popup() {
               {resultados.map((r) => (
                 <li key={r.norma.linha}>
                   <span class="norma-id">{r.norma.tipo} {r.norma.numero}/{r.norma.ano}</span>
-                  <span class={`carimbo carimbo-${r.status}`}>{ROTULO_STATUS[r.status]}</span>
+                  <span class={`carimbo carimbo-${r.status}`} title={r.motivo}>{ROTULO_STATUS[r.status]}</span>
                   {r.status === 'ambigua' && (
                     <select onChange={(e) => setEscolhas((prev) => ({ ...prev, [r.norma.linha]: (e.target as HTMLSelectElement).value }))}>
                       <option value="">escolher…</option>
@@ -93,6 +114,9 @@ export function Popup() {
                 </li>
               ))}
             </ul>
+            {resultados.some((r) => r.status === 'falha') && (
+              <button class="btn btn-fantasma" onClick={reconsultarFalhas}>Reconsultar falhas</button>
+            )}
             <button class="btn btn-primario" onClick={confirmar}>Confirmar e monitorar</button>
           </>
         )}

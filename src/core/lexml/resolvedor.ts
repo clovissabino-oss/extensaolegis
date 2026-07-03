@@ -34,10 +34,10 @@ export async function resolverNorma(
   let html: string;
   try {
     const resp = await fetchFn(url);
-    if (!resp.ok) return { norma, status: 'nao_localizada', candidatos: [], motivo: `HTTP ${resp.status}` };
+    if (!resp.ok) return { norma, status: 'falha', candidatos: [], motivo: `HTTP ${resp.status}` };
     html = await resp.text();
   } catch (e) {
-    return { norma, status: 'nao_localizada', candidatos: [], motivo: `Falha de rede: ${(e as Error).message}` };
+    return { norma, status: 'falha', candidatos: [], motivo: `Falha de rede: ${(e as Error).message}` };
   }
 
   const segAlvo = segmentoUrn(norma.tipo);

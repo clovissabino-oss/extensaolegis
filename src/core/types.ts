@@ -18,7 +18,9 @@ export interface NormaImportada {
   linha: number;         // linha de origem na planilha (1-based)
 }
 
-export type StatusResolucao = 'confirmada' | 'ambigua' | 'nao_localizada';
+// 'falha' = erro transitório de consulta (HTTP 5xx, rede); diferente de
+// 'nao_localizada', que significa busca bem-sucedida sem correspondência.
+export type StatusResolucao = 'confirmada' | 'ambigua' | 'nao_localizada' | 'falha';
 
 export interface CandidatoNorma {
   urn: string;

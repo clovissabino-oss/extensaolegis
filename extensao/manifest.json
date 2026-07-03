@@ -3,9 +3,15 @@
   "name": "Extensão Legis Monitor",
   "version": "0.1.0",
   "description": "Monitora inovações em legislação federal (Planalto) a partir de uma planilha.",
+  "icons": {
+    "128": "icon-128.png"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Legis Monitor"
+    "default_title": "Legis Monitor",
+    "default_icon": {
+      "128": "icon-128.png"
+    }
   },
   "background": {
     "service_worker": "service-worker-loader.js",

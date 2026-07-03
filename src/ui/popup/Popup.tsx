@@ -3,12 +3,20 @@ import { useState } from 'preact/hooks';
 import { detectarColunas, importarPlanilha, type MapaColunas } from '../../core/planilha/importador';
 import { resolverLote, confirmarParaLeis, preencherUrlsPlanalto } from './confirmacao';
 import { abrirDb, salvarLei } from '../../core/repositorio/db';
-import type { ResultadoResolucao } from '../../core/types';
+import type { ResultadoResolucao, StatusResolucao } from '../../core/types';
+import { Coruja } from '../coruja';
+import '../theme.css';
+
+const ROTULO_STATUS: Record<StatusResolucao, string> = {
+  confirmada: 'Confirmada',
+  ambigua: 'Ambígua',
+  nao_localizada: 'Não localizada',
+};
 
 export function Popup() {
   const [resultados, setResultados] = useState<ResultadoResolucao[]>([]);
   const [escolhas, setEscolhas] = useState<Record<number, string>>({});
-  const [msg, setMsg] = useState('Selecione a planilha de leis (.xlsx/.csv).');
+  const [msg, setMsg] = useState('Aguardando planilha de leis.');
 
   async function aoSelecionar(e: Event) {
     const file = (e.target as HTMLInputElement).files?.[0];
@@ -38,30 +46,57 @@ export function Popup() {
   }
 
   return (
-    <div style="width:360px;padding:12px;font-family:sans-serif">
-      <h3>Legis Monitor</h3>
-      <button onClick={() => chrome.tabs.create({ url: 'panel.html' })} style="margin-bottom:8px">Abrir Painel</button>
-      <a href={chrome.runtime.getURL('modelo-legislacoes.xlsx')} download style="display:block;margin-bottom:8px;font-size:12px">Baixar planilha-modelo</a>
-      <input type="file" accept=".xlsx,.xls,.csv" onChange={aoSelecionar} />
-      <p style="font-size:12px">{msg}</p>
-      {resultados.length > 0 && (
-        <>
-          <ul style="max-height:260px;overflow:auto;font-size:12px;padding-left:16px">
-            {resultados.map((r) => (
-              <li key={r.norma.linha}>
-                {r.norma.tipo} {r.norma.numero}/{r.norma.ano} — <b>{r.status}</b>
-                {r.status === 'ambigua' && (
-                  <select onChange={(e) => setEscolhas((prev) => ({ ...prev, [r.norma.linha]: (e.target as HTMLSelectElement).value }))}>
-                    <option value="">escolher…</option>
-                    {r.candidatos.map((c) => <option key={c.urn} value={c.urn}>{c.urn}</option>)}
-                  </select>
-                )}
-              </li>
-            ))}
-          </ul>
-          <button onClick={confirmar}>Confirmar e monitorar</button>
-        </>
-      )}
+    <div class="popup">
+      <header class="cabecalho">
+        <Coruja tamanho={44} />
+        <div class="cabecalho-titulos">
+          <p class="cabecalho-eyebrow">Vigilância legislativa · Planalto</p>
+          <h1 class="cabecalho-nome">Legis Monitor</h1>
+        </div>
+      </header>
+
+      <div class="popup-corpo">
+        <button class="btn btn-primario" onClick={() => chrome.tabs.create({ url: 'panel.html' })}>
+          Abrir painel de inovações
+        </button>
+        <a class="link-modelo" href={chrome.runtime.getURL('modelo-legislacoes.xlsx')} download>
+          Baixar planilha-modelo
+        </a>
+
+        <label class="protocolo">
+          <svg class="protocolo-lupa" width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" fill="none" stroke="#F5821F" stroke-width="3" />
+            <line x1="16.5" y1="16.5" x2="23" y2="23" stroke="#F5821F" stroke-width="3.5" stroke-linecap="round" />
+          </svg>
+          <span>
+            <p class="protocolo-titulo">Enviar planilha de leis</p>
+            <p class="protocolo-dica">.xlsx ou .csv · colunas Tipo, Número e Ano</p>
+          </span>
+          <input type="file" accept=".xlsx,.xls,.csv" onChange={aoSelecionar} />
+        </label>
+
+        <p class="despacho">{msg}</p>
+
+        {resultados.length > 0 && (
+          <>
+            <ul class="expediente">
+              {resultados.map((r) => (
+                <li key={r.norma.linha}>
+                  <span class="norma-id">{r.norma.tipo} {r.norma.numero}/{r.norma.ano}</span>
+                  <span class={`carimbo carimbo-${r.status}`}>{ROTULO_STATUS[r.status]}</span>
+                  {r.status === 'ambigua' && (
+                    <select onChange={(e) => setEscolhas((prev) => ({ ...prev, [r.norma.linha]: (e.target as HTMLSelectElement).value }))}>
+                      <option value="">escolher…</option>
+                      {r.candidatos.map((c) => <option key={c.urn} value={c.urn}>{c.urn}</option>)}
+                    </select>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <button class="btn btn-primario" onClick={confirmar}>Confirmar e monitorar</button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
